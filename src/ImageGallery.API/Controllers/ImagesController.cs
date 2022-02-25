@@ -53,7 +53,7 @@ namespace ImageGallery.API.Controllers
                 return NotFound();
             }
 
-            var imageToReturn = _mapper.Map<Model.Image>(imageFromRepo);
+            var imageToReturn = _mapper.Map<Image>(imageFromRepo);
 
             return Ok(imageToReturn);
         }
