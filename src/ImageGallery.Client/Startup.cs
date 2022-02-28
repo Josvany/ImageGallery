@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.IdentityModel.Tokens.Jwt;
@@ -62,7 +63,7 @@ namespace ImageGallery.Client
                 //options.Scope.Add("openid");
                 //options.Scope.Add("profile");
                 options.Scope.Add("address");
-                options.Scope.Add(JwtClaimTypes.Role + "s");
+                options.Scope.Add("roles");
                 //options.ClaimActions.Remove("nbf");
                 options.ClaimActions.DeleteClaim("address");
                 options.ClaimActions.DeleteClaim("sid");
@@ -73,6 +74,11 @@ namespace ImageGallery.Client
                 options.SaveTokens = true;
                 options.ClientSecret = "secret";
                 options.GetClaimsFromUserInfoEndpoint = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    NameClaimType = JwtClaimTypes.GivenName,
+                    RoleClaimType = JwtClaimTypes.Role
+                };
             });
 
 
