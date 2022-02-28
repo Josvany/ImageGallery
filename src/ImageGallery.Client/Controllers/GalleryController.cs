@@ -202,7 +202,7 @@ namespace ImageGallery.Client.Controllers
                 Debug.WriteLine($"Claim type: {claim.Type} - Claim value: {claim.Value}");
             }
         }
-
+        [Authorize(Roles = "PayingUser")]
         public async Task<IActionResult> OrderFrame()
         {
             var idpClient = _httpClientFactory.CreateClient("IDPClient");
