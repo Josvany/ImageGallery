@@ -46,7 +46,7 @@ namespace ImageGallery.Client
                 options.ClientId = "imagegalleryclient";
                 options.ResponseType = "code";
                 //options.UsePkce = false;
-                //options.CallbackPath = new PathString("...")                
+                //options.CallbackPath = new PathString("...")
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
                 options.SaveTokens = true;
