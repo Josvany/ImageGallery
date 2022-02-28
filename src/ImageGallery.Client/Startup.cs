@@ -36,6 +36,14 @@ namespace ImageGallery.Client
                 client.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
             });
 
+            // create an HttpClient used for accessing the IDP
+            services.AddHttpClient("IDPClient", client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:44318/");
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+            });
+
             services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -50,9 +58,11 @@ namespace ImageGallery.Client
                 options.ResponseType = "code";
                 //options.UsePkce = false;
                 //options.CallbackPath = new PathString("...")
-                options.Scope.Add("openid");
-                options.Scope.Add("profile");
+                //options.Scope.Add("openid");
+                //options.Scope.Add("profile");
+                options.Scope.Add("address");
                 //options.ClaimActions.Remove("nbf");
+                options.ClaimActions.DeleteClaim("address");
                 options.ClaimActions.DeleteClaim("sid");
                 options.ClaimActions.DeleteClaim("idp");
                 options.ClaimActions.DeleteClaim("s_hash");
