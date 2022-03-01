@@ -17,7 +17,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ImageGallery.Client.Controllers
-{ 
+{
     [Authorize]
     public class GalleryController : Controller
     {
@@ -25,7 +25,7 @@ namespace ImageGallery.Client.Controllers
 
         public GalleryController(IHttpClientFactory httpClientFactory)
         {
-            _httpClientFactory = httpClientFactory ?? 
+            _httpClientFactory = httpClientFactory ??
                 throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
@@ -36,7 +36,7 @@ namespace ImageGallery.Client.Controllers
             var httpClient = _httpClientFactory.CreateClient("APIClient");
 
             var request = new HttpRequestMessage(HttpMethod.Get, "/api/images/");
-            
+
             var response = await httpClient.SendAsync(
                 request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
@@ -54,7 +54,7 @@ namespace ImageGallery.Client.Controllers
                 return RedirectToAction("AccessDenied", "Authorization");
             }
 
-            throw new Exception("Problem accessing the API");             
+            throw new Exception("Problem accessing the API");
         }
 
         public async Task<IActionResult> EditImage(Guid id)
@@ -72,7 +72,7 @@ namespace ImageGallery.Client.Controllers
             response.EnsureSuccessStatusCode();
 
             using (var responseStream = await response.Content.ReadAsStreamAsync())
-            { 
+            {
                 var deserializedImage = await JsonSerializer.DeserializeAsync<Image>(responseStream);
 
                 var editImageViewModel = new EditImageViewModel()
@@ -82,7 +82,7 @@ namespace ImageGallery.Client.Controllers
                 };
 
                 return View(editImageViewModel);
-            }     
+            }
         }
 
         [HttpPost]
@@ -95,8 +95,10 @@ namespace ImageGallery.Client.Controllers
             }
 
             // create an ImageForUpdate instance
-            var imageForUpdate = new ImageForUpdate() { 
-                Title = editImageViewModel.Title };
+            var imageForUpdate = new ImageForUpdate()
+            {
+                Title = editImageViewModel.Title
+            };
 
             // serialize it
             var serializedImageForUpdate = JsonSerializer.Serialize(imageForUpdate);
@@ -111,13 +113,13 @@ namespace ImageGallery.Client.Controllers
                 serializedImageForUpdate,
                 System.Text.Encoding.Unicode,
                 "application/json");
-            
+
             var response = await httpClient.SendAsync(
                 request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
-            return RedirectToAction("Index");       
+            return RedirectToAction("Index");
         }
 
         public async Task<IActionResult> DeleteImage(Guid id)
@@ -168,8 +170,8 @@ namespace ImageGallery.Client.Controllers
             }
 
             // serialize it
-            var serializedImageForCreation = JsonSerializer.Serialize(imageForCreation);  
-            
+            var serializedImageForCreation = JsonSerializer.Serialize(imageForCreation);
+
             var httpClient = _httpClientFactory.CreateClient("APIClient");
 
             var request = new HttpRequestMessage(
@@ -195,7 +197,7 @@ namespace ImageGallery.Client.Controllers
             await HttpContext.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme);
         }
 
-        [Authorize(Roles = "PayingUser")]
+        [Authorize(Policy = "CanOrderFrame")]
         public async Task<IActionResult> OrderFrame()
         {
             var idpClient = _httpClientFactory.CreateClient("IDPClient");
