@@ -1,5 +1,4 @@
-﻿using IdentityModel;
-using IdentityModel.Client;
+﻿using IdentityModel.Client;
 using ImageGallery.Client.ViewModels;
 using ImageGallery.Model;
 using Microsoft.AspNetCore.Authentication;
@@ -18,7 +17,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ImageGallery.Client.Controllers
-{
+{ 
     [Authorize]
     public class GalleryController : Controller
     {
@@ -26,7 +25,7 @@ namespace ImageGallery.Client.Controllers
 
         public GalleryController(IHttpClientFactory httpClientFactory)
         {
-            _httpClientFactory = httpClientFactory ??
+            _httpClientFactory = httpClientFactory ?? 
                 throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
@@ -36,18 +35,26 @@ namespace ImageGallery.Client.Controllers
 
             var httpClient = _httpClientFactory.CreateClient("APIClient");
 
-            var request = new HttpRequestMessage(
-                HttpMethod.Get,
-                "/api/images/");
-
+            var request = new HttpRequestMessage(HttpMethod.Get, "/api/images/");
+            
             var response = await httpClient.SendAsync(
                 request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
-            response.EnsureSuccessStatusCode();
+            if (response.IsSuccessStatusCode)
+            {
+                using (var responseStream = await response.Content.ReadAsStreamAsync())
+                {
+                    return View(new GalleryIndexViewModel(
+                        await JsonSerializer.DeserializeAsync<List<Image>>(responseStream)));
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                return RedirectToAction("AccessDenied", "Authorization");
+            }
 
-            using var responseStream = await response.Content.ReadAsStreamAsync();
-            return View(new GalleryIndexViewModel(
-                await JsonSerializer.DeserializeAsync<List<Image>>(responseStream)));
+            throw new Exception("Problem accessing the API");             
         }
 
         public async Task<IActionResult> EditImage(Guid id)
@@ -64,16 +71,18 @@ namespace ImageGallery.Client.Controllers
 
             response.EnsureSuccessStatusCode();
 
-            using var responseStream = await response.Content.ReadAsStreamAsync();
-            var deserializedImage = await JsonSerializer.DeserializeAsync<Image>(responseStream);
+            using (var responseStream = await response.Content.ReadAsStreamAsync())
+            { 
+                var deserializedImage = await JsonSerializer.DeserializeAsync<Image>(responseStream);
 
-            var editImageViewModel = new EditImageViewModel()
-            {
-                Id = deserializedImage.Id,
-                Title = deserializedImage.Title
-            };
+                var editImageViewModel = new EditImageViewModel()
+                {
+                    Id = deserializedImage.Id,
+                    Title = deserializedImage.Title
+                };
 
-            return View(editImageViewModel);
+                return View(editImageViewModel);
+            }     
         }
 
         [HttpPost]
@@ -86,10 +95,8 @@ namespace ImageGallery.Client.Controllers
             }
 
             // create an ImageForUpdate instance
-            var imageForUpdate = new ImageForUpdate()
-            {
-                Title = editImageViewModel.Title
-            };
+            var imageForUpdate = new ImageForUpdate() { 
+                Title = editImageViewModel.Title };
 
             // serialize it
             var serializedImageForUpdate = JsonSerializer.Serialize(imageForUpdate);
@@ -98,20 +105,19 @@ namespace ImageGallery.Client.Controllers
 
             var request = new HttpRequestMessage(
                 HttpMethod.Put,
-                $"/api/images/{editImageViewModel.Id}")
-            {
-                Content = new StringContent(
+                $"/api/images/{editImageViewModel.Id}");
+
+            request.Content = new StringContent(
                 serializedImageForUpdate,
                 System.Text.Encoding.Unicode,
-                "application/json")
-            };
-
+                "application/json");
+            
             var response = await httpClient.SendAsync(
                 request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
-            return RedirectToAction("Index");
+            return RedirectToAction("Index");       
         }
 
         public async Task<IActionResult> DeleteImage(Guid id)
@@ -130,6 +136,7 @@ namespace ImageGallery.Client.Controllers
             return RedirectToAction("Index");
         }
 
+        [Authorize(Roles = "PayingUser")]
         public IActionResult AddImage()
         {
             return View();
@@ -137,6 +144,7 @@ namespace ImageGallery.Client.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "PayingUser")]
         public async Task<IActionResult> AddImage(AddImageViewModel addImageViewModel)
         {
             if (!ModelState.IsValid)
@@ -160,19 +168,18 @@ namespace ImageGallery.Client.Controllers
             }
 
             // serialize it
-            var serializedImageForCreation = JsonSerializer.Serialize(imageForCreation);
-
+            var serializedImageForCreation = JsonSerializer.Serialize(imageForCreation);  
+            
             var httpClient = _httpClientFactory.CreateClient("APIClient");
 
             var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                $"/api/images")
-            {
-                Content = new StringContent(
+                $"/api/images");
+
+            request.Content = new StringContent(
                 serializedImageForCreation,
                 System.Text.Encoding.Unicode,
-                "application/json")
-            };
+                "application/json");
 
             var response = await httpClient.SendAsync(
                 request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
@@ -181,27 +188,13 @@ namespace ImageGallery.Client.Controllers
 
             return RedirectToAction("Index");
         }
+
         public async Task Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme);
         }
 
-        public async Task WriteOutIdentityInformation()
-        {
-            // get the saved identity token
-            var identityToken = await HttpContext
-                .GetTokenAsync(OpenIdConnectParameterNames.IdToken);
-
-            // write it out
-            Debug.WriteLine($"Identity token: {identityToken}");
-
-            // write out the user claims
-            foreach (var claim in User.Claims)
-            {
-                Debug.WriteLine($"Claim type: {claim.Type} - Claim value: {claim.Value}");
-            }
-        }
         [Authorize(Roles = "PayingUser")]
         public async Task<IActionResult> OrderFrame()
         {
@@ -234,9 +227,27 @@ namespace ImageGallery.Client.Controllers
             }
 
             var address = userInfoResponse.Claims
-                .FirstOrDefault(c => c.Type == JwtClaimTypes.Address)?.Value;
+                .FirstOrDefault(c => c.Type == "address")?.Value;
 
             return View(new OrderFrameViewModel(address));
         }
+
+        public async Task WriteOutIdentityInformation()
+        {
+            // get the saved identity token
+            var identityToken = await HttpContext
+                .GetTokenAsync(OpenIdConnectParameterNames.IdToken);
+
+            // write it out
+            Debug.WriteLine($"Identity token: {identityToken}");
+
+            // write out the user claims
+            foreach (var claim in User.Claims)
+            {
+                Debug.WriteLine($"Claim type: {claim.Type} - Claim value: {claim.Value}");
+            }
+        }
+
+
     }
 }
