@@ -25,8 +25,9 @@ namespace ImageGallery.Client.HttpHandlers
             HttpRequestMessage request, 
             CancellationToken cancellationToken)
         {
-            var accessToken = await _httpContextAccessor
-                .HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+            var accessToken = await _httpContextAccessor.HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+
+            var refreshToken = await _httpContextAccessor.HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
 
             if (!string.IsNullOrWhiteSpace(accessToken))
             {
